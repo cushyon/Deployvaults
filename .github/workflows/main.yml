@@ -1,0 +1,161 @@
+name: main
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: 1.70.0
+  SOLANA_VERSION: "1.16.27"
+
+jobs:
+  fmt-clippy:
+    name: fmt & clippy
+    runs-on: ubicloud
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          profile: minimal
+          override: true
+          components: rustfmt, clippy
+      - name: Cache build files
+        uses: Swatinem/rust-cache@v1
+      - name: Cargo fmt
+        run: cargo fmt -- --check
+      - name: Cargo clippy
+        run: cargo clippy -p drift-vaults
+  unit:
+    name: Unit tests
+    runs-on: ubicloud
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          profile: minimal
+          override: true
+      - name: Cache build artefacts
+        uses: Swatinem/rust-cache@v1
+      - name: Run package checks
+        run: cargo check # run package checks
+      - name: Run unit tests
+        run: cargo test --lib # run unit tests
+  yarn-prettier:
+    runs-on: ubicloud
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.18.x'
+          registry-url: "https://registry.npmjs.org"
+      - name: Install yarn
+        run: yarn
+      - name: Run prettier
+        run: yarn prettify
+  yarn-lint:
+    runs-on: ubicloud
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.18.x'
+          registry-url: "https://registry.npmjs.org"
+      - name: Install yarn
+        run: yarn
+      - name: Run lint
+        run: yarn lint
+  anchor-tests:
+    runs-on: ubicloud
+    timeout-minutes: 60
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          profile: minimal
+          override: true
+      - name: Cache build artefacts
+        uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: "true"
+
+      - uses: ./.github/actions/setup-solana/
+
+      - name: Cache Anchor CLI
+        id: cache-anchor
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/anchor
+          key: ${{ runner.os }}-anchor-cli-0.29.0
+
+      - name: Install Anchor CLI
+        if: steps.cache-anchor.outputs.cache-hit != 'true'
+        run: cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
+
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.18.x'
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup yarn
+        run: npm install -g yarn
+
+      - name: Install yarn
+        run: yarn
+
+      - name: install typescript
+        run: npm install typescript -g
+
+      - name: build sdk
+        run: |
+          yarn
+          tsc
+        working-directory: ts/sdk
+
+      - name: run anchor tests
+        run: anchor test -- --features anchor-test
+  verified-build:
+    name: Build Verifiable Artifact
+    runs-on: ubicloud
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Solana Verify
+        run: |
+          cargo install --locked --version 0.2.11 solana-verify
+          solana-verify --version
+
+      - name: Verifiable Build
+        run: |
+          cargo vendor
+          mkdir -p .cargo
+          echo '[source.crates-io]' > .cargo/config.toml
+          echo 'replace-with = "vendored-sources"' >> .cargo/config.toml
+          echo '[source.vendored-sources]' >> .cargo/config.toml
+          echo 'directory = "vendor"' >> .cargo/config.toml
+          solana-verify build --library-name drift_vaults --base-image ellipsislabs/solana:1.16.6
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: target/deploy/drift_vaults.so
