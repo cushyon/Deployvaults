@@ -1,56 +1,24 @@
-# Drift Vaults
+# Collection of info on how to set up a Drift Vaults - May 25
 
-soon^TM
+CLI method is the most up to date:
+https://drift-labs.github.io/v2-teacher/?typescript#drift-vaults
 
-[did you see the CLI?](./ts/sdk/README.md) and the [wiki?](https://github.com/drift-labs/drift-vaults/wiki)
+Vaults github:
+https://github.com/drift-labs/drift-vaults
 
-# Development
+Template for vault UI:
+https://github.com/drift-labs/vaults-ui-template
 
-* anchor 0.29.0
-* rust 1.70.0
-* solana 1.16.27
 
-```shell
-# if you don't have avm, install it here:
-# https://book.anchor-lang.com/getting_started/installation.html
-avm use 0.29.0
+other ressources:
 
-# if on Apple Silicon:
-# rustup override set 1.70.0-x86_64-apple-darwin
-# else
-rustup override set 1.70.0
+https://github.com/drift-labs/protocol-v2 
 
-# if you already have solana:
-# solana-install init 1.16.27
-# else:
-sh -c "$(curl -sSfL https://release.solana.com/v1.16.27/install)"
-```
+https://github.com/drift-labs/sdk-examples
 
-If on Mac and getting this error:
-```shell
-Error: failed to start validator: Failed to create ledger at test-ledger: blockstore error
-```
+Example of CLI command devnet:
+yarn cli init-vault --name "test cushion2" --market-index 1 --redeem-period 3600 --max-tokens 10000 --management-fee 2 --profit-share 20 --permissioned --min-deposit-amount 1 --url https://devnet.helius-rpc.com/\?api-key\=41023146-3e5e-4214-ba0d-8697fb7f0045  --keypair ~/cushionwalletv2.json  --env devnet
 
-then run these commands:
+Be careful with the permissioned flag, it gives the ability to deposit or not and is set to "false" by default.
 
-```shell
-brew install gnu-tar
-# Put this in ~/.zshrc
-export PATH="/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH"
-```
-
-## Run tests
-
-```shell
-yarn && cd ts/sdk && yarn && yarn build && cd ..
-
-# can be any valid key
-ANCHOR_WALLET=~/.config/solana/id.json && anchor test
-```
-
-For ease-of-use you can run the following script to build and test instead:
-
-```shell
-chmod +x ./test.sh
-./test.sh
-```
+In case you already created a PDA but your signatures are not validated, comment the command getUpdateDelegateIx in  "await driftVault.getUpdateDelegateIx(vaultAddress, delegate)" in initVault.ts
