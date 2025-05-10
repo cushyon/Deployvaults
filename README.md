@@ -22,3 +22,42 @@ yarn cli init-vault --name "test cushion2" --market-index 1 --redeem-period 3600
 Be careful with the permissioned flag, it gives the ability to deposit or not and is set to "false" by default.
 
 In case you already created a PDA but your signatures are not validated, comment the command getUpdateDelegateIx in  "await driftVault.getUpdateDelegateIx(vaultAddress, delegate)" in initVault.ts
+
+You can follow analytics about vaults here:
+https://analytics.drift.trade/?tab=Vaults
+
+# initialize Drift Client to execute trades from Vault
+
+STEP 1 
+
+authorityaddy = VAULT ADDRESS
+
+const driftClient = new DriftClient({
+        connection,
+        wallet,
+        env: "mainnet-beta", 
+        accountSubscription: {
+          type: 'websocket',
+        },
+        authority: authorityaddy,
+        subAccountIds: [0],
+        activeSubAccountId: 0
+      });
+
+
+--------------------
+
+STEP 2
+
+const orderParams = {
+  orderType: OrderType.MARKET,
+  marketIndex: 0,
+  direction: PositionDirection.LONG,
+  baseAssetAmount: driftClient.convertToPerpPrecision(100),
+  auctionStartPrice: driftClient.convertToPricePrecision(21.20),
+  auctionEndPrice: driftClient.convertToPricePrecision(21.30),
+  price: driftClient.convertToPricePrecision(21.35),
+  auctionDuration: 60,
+  maxTs: now + 100,
+}
+await driftClient.placePerpOrder(orderParams);
