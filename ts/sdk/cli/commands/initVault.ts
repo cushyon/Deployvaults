@@ -136,7 +136,7 @@ export const initVault = async (program: Command, cmdOpts: OptionValues) => {
             minDepositAmount: minDepositAmountBN,
             manager: cmdOpts.manager,
         }),
-        await driftVault.getUpdateDelegateIx(vaultAddress, delegate)
+       // await driftVault.getUpdateDelegateIx(vaultAddress, delegate)
     ];
 
     const signedOrdersAccountAddress = getSignedMsgUserAccountPublicKey(
